@@ -41,7 +41,8 @@ the video directly to your host machine.
 
 ``` bash
 git clone https://github.com/hayRez/youtube_downloader_with_docker.git
-cd yourrepo
+cd youtube_downloader_with_docker
+
 ```
 
 ------------------------------------------------------------------------
