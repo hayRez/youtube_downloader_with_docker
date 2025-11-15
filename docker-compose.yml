@@ -1,0 +1,10 @@
+
+version: "3.9"
+
+services:
+  downloader:
+    build: .
+    ports:
+      - "8080:5000"
+    volumes:
+      - ./downloads:/downloads
