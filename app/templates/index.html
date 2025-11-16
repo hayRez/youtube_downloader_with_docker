@@ -1,10 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Downloader</title>
+  <style>
+    /* Reset some default styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #ff4b2b, #ff416c);
+      color: #fff;
+    }
+
+    .container {
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    h2 {
+      margin-bottom: 30px;
+      font-size: 2rem;
+      letter-spacing: 1px;
+    }
+
+    form input[type="text"] {
+      padding: 12px 15px;
+      width: 300px;
+      border-radius: 8px;
+      border: none;
+      margin-right: 10px;
+      font-size: 1rem;
+    }
+
+    form button {
+      padding: 12px 20px;
+      background-color: #ff416c;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    form button:hover {
+      background-color: #ff4b2b;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    @media (max-width: 500px) {
+      form input[type="text"] {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+
+      form button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
 <body>
-  <h2>YouTube Downloader</h2>
-  <form action="/download" method="post">
-      <input type="text" name="url" placeholder="Enter YouTube URL" size="50">
+  <div class="container">
+    <h2>YouTube Downloader</h2>
+    <form action="/download" method="post">
+      <input type="text" name="url" placeholder="Enter YouTube URL">
       <button type="submit">Download</button>
-  </form>
+    </form>
+  </div>
+
+  <footer>
+    Developed and deployed by Gholam Haydar Rezaie
+  </footer>
 </body>
 </html>
