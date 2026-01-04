@@ -1,17 +1,19 @@
 FROM python:3.11-slim
 
-# 1. Set the working directory
 WORKDIR /app
 
-# 2. Update package lists, install necessary dependencies (curl, ffmpeg), and clean up
-# ffmpeg is essential for yt-dlp to handle various video formats and re-muxing.
+# 1. Install Dependencies (ffmpeg is crucial)
 RUN apt-get update \
     && apt-get install -y curl ffmpeg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Download and install yt-dlp
-# Installing it to /usr/local/bin ensures it's available system-wide.
+# 2. Install Deno (JavaScript runtime)
+RUN curl -fsSL https://deno.land/install.sh | sh
+# Ensure deno is accessible on the PATH for yt-dlp
+ENV PATH="/root/.deno/bin:$PATH"
+
+# 3. Install yt-dlp
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     -o /usr/local/bin/yt-dlp \
     && chmod a+x /usr/local/bin/yt-dlp
@@ -20,13 +22,10 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy the application code
-# Assuming your Flask app (server.py) and templates are in the current directory
+# 5. Copy the application code AND the cookies file
 COPY . .
 
-# 6. Expose the port (Render often handles this automatically, but it's good practice)
 EXPOSE 5000
 
-# 7. Start the application
-# Ensure your Flask app runs on host="0.0.0.0" to be accessible inside the container
+# 6. Start the application
 CMD ["python", "server.py"]
