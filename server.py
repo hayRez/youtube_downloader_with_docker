@@ -3,7 +3,7 @@ import subprocess
 import os
 import tempfile
 import uuid 
-import shutil # Added for robust file path handling if needed, though os.path.join is fine
+import glob # Used to find the file created by yt-dlp
 
 app = Flask(__name__, template_folder="app/templates")
 
@@ -20,27 +20,29 @@ def download():
     if not url:
         return "No URL provided", 400
 
-    # 1. Define a temporary file path with a unique name
-    unique_filename = f"video_{uuid.uuid4()}.mp4"
-    temp_filepath = os.path.join(tempfile.gettempdir(), unique_filename) 
-
-    # Placeholder for the final filename that the user sees
+    # 1. Define a temporary file name TEMPLATE using %(ext)s
+    # We use a unique ID prefix (first 8 hex chars) for easy searching later.
+    unique_id_prefix = uuid.uuid4().hex[:8]
+    filename_template = os.path.join(tempfile.gettempdir(), f"{unique_id_prefix}_video.%(ext)s")
+    
+    # Placeholder for the final filename that the user sees in their browser
     attachment_filename = "downloaded_video.mp4" 
     
-    # Initialize the variable to None outside the try block for cleanup purposes
-    # Although temp_filepath is defined above, this is a good practice.
-    file_to_cleanup = None 
+    # This variable will store the actual path to the file yt-dlp creates for cleanup
+    actual_file_path = None 
 
     try:
-        # 2. Run yt-dlp to download the file to the temp path
-        # check=True raises CalledProcessError if yt-dlp returns a non-zero exit code
-        result = subprocess.run(
+        # 2. Run yt-dlp to download and explicitly mux (combine) streams
+        # -f bestvideo[ext=mp4]+bestaudio[ext=m4a]/best: Selects the best streams and merges them.
+        # --merge-output-format mp4: Forces the final container format to be MP4.
+        subprocess.run(
             [
                 "yt-dlp",
                 "--no-playlist",
-                # Pass the cookies file to bypass sign-in and rate limits
-                "--cookies", COOKIES_FILE, 
-                "-o", temp_filepath, # Output to the temporary path
+                "--cookies", COOKIES_FILE,
+                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best", 
+                "--merge-output-format", "mp4", 
+                "-o", filename_template, # Use the template here
                 url
             ],
             check=True, 
@@ -48,18 +50,23 @@ def download():
             text=True
         )
         
-        # 3. VERIFICATION: Check if the file was created.
-        # If subprocess.run finished without error (check=True was OK), the file MUST exist.
-        if not os.path.exists(temp_filepath):
-             # This means yt-dlp exited successfully (return code 0) but didn't write the file.
-             # This is extremely rare but possible; we treat it as an internal failure.
-             raise RuntimeError(f"Download process succeeded, but output file was not found at {temp_filepath}.")
-
-        file_to_cleanup = temp_filepath
+        # 3. DISCOVERY: Find the actual file path created by yt-dlp
+        # We search the /tmp directory for any file starting with our unique ID prefix.
+        search_pattern = os.path.join(tempfile.gettempdir(), f"{unique_id_prefix}_video.*")
+        found_files = glob.glob(search_pattern)
+        
+        if not found_files:
+             # If yt-dlp exited successfully (return code 0) but no file was created.
+             raise RuntimeError(
+                 f"Download succeeded but no output file found. Check yt-dlp's exit logs for potential muxing warnings."
+             )
+        
+        # Assume the first found file is the one we want
+        actual_file_path = found_files[0]
 
         # 4. Serve the file to the browser
         response = send_file(
-            file_to_cleanup,
+            actual_file_path,
             as_attachment=True,
             download_name=attachment_filename,
             mimetype="video/mp4" 
@@ -68,23 +75,21 @@ def download():
         return response
 
     except subprocess.CalledProcessError as e:
-        # **Catches yt-dlp failures** (e.g., video removed, geo-blocked, invalid URL)
+        # **Catches yt-dlp failures**
         error_output = e.stderr or "No specific error message provided by yt-dlp."
         print(f"yt-dlp Failed (Exit Code {e.returncode}): {error_output}")
-        # Return the actual yt-dlp error output to the user
         return f"Download Failed (yt-dlp Error): {error_output.strip()}", 500
 
     except Exception as e:
-        # Catches other system errors (e.g., file system failure, Runtime Error above)
+        # Catches other system errors (like the RuntimeError we manually raised)
         print(f"An unexpected server error occurred: {e}")
         return f"An unexpected server error occurred: {e}", 500
 
     finally:
         # 5. Cleanup: Delete the file from the container's disk
-        # We use temp_filepath here, which is set above the try block
-        if os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
-            print(f"Cleaned up temporary file: {temp_filepath}")
+        if actual_file_path and os.path.exists(actual_file_path):
+            os.remove(actual_file_path)
+            print(f"Cleaned up temporary file: {actual_file_path}")
+        # Note: No need for 'elif' cleanup here; the primary cleanup is robust enough.
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+# NOTE: The app.run() block is REMOVED to let Gunicorn start the application.

@@ -2,8 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 1. Install Dependencies (ffmpeg, curl, AND unzip)
-# We add 'unzip' here to satisfy the Deno installer requirement.
+# 1. Install Dependencies (ffmpeg, curl, unzip) and clean up
 RUN apt-get update \
     && apt-get install -y curl ffmpeg unzip \
     && apt-get clean \
@@ -19,14 +18,16 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     -o /usr/local/bin/yt-dlp \
     && chmod a+x /usr/local/bin/yt-dlp
 
-# 4. Install Python dependencies
+# 4. Install Python dependencies (Flask and Gunicorn)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy the application code AND the cookies file
+# 5. Copy the application code and cookies file
 COPY . .
 
 EXPOSE 5000
 
-# 6. Start the application
-CMD ["python", "server.py"]
+# 6. Start the application using Gunicorn (Production WSGI Server)
+# This command runs 4 worker processes, bound to port 5000, 
+# loading the 'app' variable from the 'server.py' module.
+CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5000", "server:app"]
