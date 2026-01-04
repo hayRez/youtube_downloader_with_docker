@@ -3,6 +3,7 @@ import subprocess
 import os
 import tempfile
 import uuid 
+import shutil # Added for robust file path handling if needed, though os.path.join is fine
 
 app = Flask(__name__, template_folder="app/templates")
 
@@ -25,10 +26,15 @@ def download():
 
     # Placeholder for the final filename that the user sees
     attachment_filename = "downloaded_video.mp4" 
+    
+    # Initialize the variable to None outside the try block for cleanup purposes
+    # Although temp_filepath is defined above, this is a good practice.
+    file_to_cleanup = None 
 
     try:
         # 2. Run yt-dlp to download the file to the temp path
-        subprocess.run(
+        # check=True raises CalledProcessError if yt-dlp returns a non-zero exit code
+        result = subprocess.run(
             [
                 "yt-dlp",
                 "--no-playlist",
@@ -41,10 +47,19 @@ def download():
             capture_output=True,
             text=True
         )
+        
+        # 3. VERIFICATION: Check if the file was created.
+        # If subprocess.run finished without error (check=True was OK), the file MUST exist.
+        if not os.path.exists(temp_filepath):
+             # This means yt-dlp exited successfully (return code 0) but didn't write the file.
+             # This is extremely rare but possible; we treat it as an internal failure.
+             raise RuntimeError(f"Download process succeeded, but output file was not found at {temp_filepath}.")
 
-        # 3. Serve the file to the browser
+        file_to_cleanup = temp_filepath
+
+        # 4. Serve the file to the browser
         response = send_file(
-            temp_filepath,
+            file_to_cleanup,
             as_attachment=True,
             download_name=attachment_filename,
             mimetype="video/mp4" 
@@ -53,17 +68,20 @@ def download():
         return response
 
     except subprocess.CalledProcessError as e:
-        error_output = e.stderr or "No error details available."
-        print(f"yt-dlp failed: {error_output}")
-        # Return only the relevant error details to the frontend
-        return f"Download failed. Error: {error_output.strip()}", 500
-        
+        # **Catches yt-dlp failures** (e.g., video removed, geo-blocked, invalid URL)
+        error_output = e.stderr or "No specific error message provided by yt-dlp."
+        print(f"yt-dlp Failed (Exit Code {e.returncode}): {error_output}")
+        # Return the actual yt-dlp error output to the user
+        return f"Download Failed (yt-dlp Error): {error_output.strip()}", 500
+
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        # Catches other system errors (e.g., file system failure, Runtime Error above)
+        print(f"An unexpected server error occurred: {e}")
         return f"An unexpected server error occurred: {e}", 500
 
     finally:
         # 5. Cleanup: Delete the file from the container's disk
+        # We use temp_filepath here, which is set above the try block
         if os.path.exists(temp_filepath):
             os.remove(temp_filepath)
             print(f"Cleaned up temporary file: {temp_filepath}")
