@@ -1,95 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Downloader</title>
-  <style>
-    /* Reset some default styles */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <style>
+        /* Reset some default styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #ff4b2b, #ff416c);
-      color: #fff;
-    }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #ff4b2b, #ff416c);
+            color: #fff;
+        }
 
-    .container {
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 40px;
-      border-radius: 15px;
-      text-align: center;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    }
+        .container {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
 
-    h2 {
-      margin-bottom: 30px;
-      font-size: 2rem;
-      letter-spacing: 1px;
-    }
+        h2 {
+            margin-bottom: 30px;
+            font-size: 2rem;
+            letter-spacing: 1px;
+        }
 
-    form input[type="text"] {
-      padding: 12px 15px;
-      width: 300px;
-      border-radius: 8px;
-      border: none;
-      margin-right: 10px;
-      font-size: 1rem;
-    }
+        form input[type="text"] {
+            padding: 12px 15px;
+            width: 300px;
+            border-radius: 8px;
+            border: none;
+            margin-right: 10px;
+            font-size: 1rem;
+        }
 
-    form button {
-      padding: 12px 20px;
-      background-color: #ff416c;
-      border: none;
-      border-radius: 8px;
-      color: #fff;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
+        form button {
+            padding: 12px 20px;
+            background-color: #ff416c;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
 
-    form button:hover {
-      background-color: #ff4b2b;
-    }
+        form button:hover {
+            background-color: #ff4b2b;
+        }
+        
+        /* New styles for status message */
+        #status-message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            min-height: 20px; /* Ensure space is reserved */
+        }
+        .loading {
+            background-color: #f0ad4e;
+            color: #333;
+        }
+        .error {
+            background-color: #d9534f;
+            color: #fff;
+        }
 
-    footer {
-      margin-top: 20px;
-      font-size: 0.9rem;
-      opacity: 0.8;
-    }
+        footer {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
 
-    @media (max-width: 500px) {
-      form input[type="text"] {
-        width: 100%;
-        margin-bottom: 10px;
-      }
+        @media (max-width: 500px) {
+            form input[type="text"] {
+                width: 100%;
+                margin-bottom: 10px;
+            }
 
-      form button {
-        width: 100%;
-      }
-    }
-  </style>
+            form button {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2>YouTube Downloader</h2>
-    <form action="/download" method="post">
-      <input type="text" name="url" placeholder="Enter YouTube URL">
-      <button type="submit">Download</button>
-    </form>
-  </div>
+    <div class="container">
+        <h2>YouTube Downloader</h2>
+        <form id="download-form" action="/download" method="post" onsubmit="handleDownload(event)">
+            <input type="text" name="url" id="url-input" placeholder="Enter YouTube URL">
+            <button type="submit" id="download-button">Download</button>
+        </form>
+        <div id="status-message"></div>
+    </div>
 
-  <footer>
-    Developed and deployed by Gholam Haydar Rezaie
-  </footer>
+    <footer>
+        Developed and deployed by Gholam Haydar Rezaie
+    </footer>
+
+    <script>
+        // Get elements for easy access
+        const form = document.getElementById('download-form');
+        const urlInput = document.getElementById('url-input');
+        const downloadButton = document.getElementById('download-button');
+        const statusDiv = document.getElementById('status-message');
+
+        /**
+         * Handles the form submission using JavaScript's Fetch API.
+         * This allows us to display status messages and keep the user on the page
+         * while the file download is triggered.
+         */
+        async function handleDownload(event) {
+            event.preventDefault(); // Stop the default browser form submission
+
+            const url = urlInput.value.trim();
+            if (!url) {
+                statusDiv.className = 'error';
+                statusDiv.textContent = 'Please enter a URL.';
+                return;
+            }
+
+            // 1. Show Loading State
+            statusDiv.className = 'loading';
+            statusDiv.textContent = 'Downloading video... Please wait. Your file should start shortly.';
+            downloadButton.disabled = true; // Disable button to prevent double-clicks
+
+            try {
+                // 2. Prepare Form Data
+                const formData = new FormData();
+                formData.append('url', url);
+
+                // 3. Submit the form asynchronously
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // 4. Handle Response
+                if (response.ok) {
+                    // Success: The server is sending a file.
+                    // Create a Blob from the response body (the file data)
+                    const blob = await response.blob();
+                    
+                    // Get the filename from the response headers (or use a default)
+                    const disposition = response.headers.get('content-disposition');
+                    let filename = 'downloaded_video.mp4';
+                    if (disposition && disposition.indexOf('attachment') !== -1) {
+                        // Attempt to extract the filename from the 'download_name' in the Flask code
+                        // This relies on the browser/fetch API exposing it, which is not always guaranteed.
+                        // For simplicity, we stick to the name defined in the Flask app.
+                        const matches = /filename="?([^"]+)"?/.exec(disposition);
+                        if (matches && matches[1]) {
+                            filename = matches[1];
+                        }
+                    }
+
+                    // Create a temporary link element to trigger the download
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename; // Set the downloaded filename
+                    document.body.appendChild(a);
+                    a.click(); // Programmatically click the link
+                    document.body.removeChild(a); // Clean up the element
+                    
+                    // Show Success Message
+                    statusDiv.className = '';
+                    statusDiv.textContent = `Download triggered successfully for ${filename}.`;
+
+                } else {
+                    // Error: Server returned a 4xx or 5xx status (e.g., 500 from yt-dlp failure)
+                    const errorText = await response.text();
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = `Download Failed: ${errorText}`;
+                }
+
+            } catch (error) {
+                // Network or general fetch error
+                statusDiv.className = 'error';
+                statusDiv.textContent = `An error occurred: ${error.message}. Check console for details.`;
+                console.error("Fetch error:", error);
+            } finally {
+                // 5. Reset State
+                downloadButton.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>
