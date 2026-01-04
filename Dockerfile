@@ -2,9 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 1. Install Dependencies (ffmpeg is crucial)
+# 1. Install Dependencies (ffmpeg, curl, AND unzip)
+# We add 'unzip' here to satisfy the Deno installer requirement.
 RUN apt-get update \
-    && apt-get install -y curl ffmpeg \
+    && apt-get install -y curl ffmpeg unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
