@@ -28,6 +28,6 @@ COPY . .
 EXPOSE 5000
 
 # 6. Start the application using Gunicorn (Production WSGI Server)
-# This command runs 4 worker processes, bound to port 5000, 
-# loading the 'app' variable from the 'server.py' module.
-CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5000", "server:app"]
+# Increased the timeout to 300 seconds (5 minutes) to prevent worker crashes 
+# during long video downloads.
+CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:5000", "--timeout", "300", "server:app"]
